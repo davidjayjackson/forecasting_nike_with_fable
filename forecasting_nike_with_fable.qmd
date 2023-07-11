@@ -1,0 +1,112 @@
+---
+title: "Forecasting Nike Stock Prices"
+format: html
+editor: visual
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message = FALSE)
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(janitor)
+library(fable)
+
+theme_set(theme_linedraw())
+```
+
+## Fun With Forecasting
+
+
+```{r}
+nike <- read_csv("./NKE.csv") %>% clean_names()
+nike$date <- mdy(nike$date)
+calendar <- read_csv("./NIKE-Calendar.csv")  %>% clean_names()
+df <- left_join(calendar,nike) |> select(date,close)
+```
+```{r}
+# Load the tidyr package
+library(tidyr)
+
+# Fill down the missing values in x
+df <- df %>%
+  fill(close)
+
+```
+
+## Explority
+
+```{r}
+df |> ggplot() + geom_line(aes(x=date,y=close,col='Close'),lwd=1) +
+  labs(title="Nike Closing Stock Prices: 2010 - 2020",y="Close Price(USD)",x="Date")
+```
+
+```{r}
+library(tsibble)
+library(fable)
+
+# Create a tsibble object with the sample data
+db <- tsibble(df)
+
+# Fit an ETS model
+model <- db %>%
+  model(ets = ETS(close))
+
+# Generate forecasts
+forecasts <- model %>%
+  forecast(h = 14)
+
+# Print the forecasts
+print(forecasts)
+
+```
+```{r}
+db <- db |> filter(date >='2020-01-01')
+autoplot(db) +
+  autolayer(forecasts)
+```
+
+```{r}
+library(tsibble)
+library(fable)
+library(forecast)
+
+# Create a tsibble object with the historical data
+historical_data <- db
+
+# Fit an ARIMA model using auto.arima
+model <- historical_data %>%
+  model(auto_arima = ARIMA(close))
+
+# Generate forecasts
+forecasts <- model %>%
+  forecast(h = 14)
+
+# Plot the historical data and predictions
+autoplot(historical_data, size = 1) +
+  autolayer(forecasts, size = 1)
+
+```
+```{r}
+library(tsibble)
+library(fable)
+
+# Create a tsibble object with the sample data
+df <- db
+
+# Fit an ARIMA model
+model <- df %>%
+  model(arima = ARIMA(close))
+
+# Generate forecasts
+forecasts <- model %>%
+  forecast(h = 14)
+
+# Print the forecasts
+print(forecasts)
+
+db <- db |> filter(date >='2020-01-01')
+autoplot(db) +
+  autolayer(forecasts)
+
+```
+
